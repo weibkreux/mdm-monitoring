@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDM Monitoring - Dynamic Google Sheets Portal</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f3ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-full font-sans antialiased text-slate-800 flex flex-col min-h-screen">
+
+    
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-100 transition-all transform">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-50 text-brand-600 mb-4 shadow-inner">
+                    <i data-lucide="database" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900">MDM Monitoring</h2>
+                <p class="text-slate-500 text-sm mt-1">Master Data & Sheets Synchronization System</p>
+            </div>
+
+            <div class="space-y-4">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center">Select Google Account Role</p>
+                
+                <button onclick="loginAs('master')" class="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50/50 transition-all group">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+                            M
+                        </div>
+                        <div class="text-left">
+                            <p class="text-sm font-semibold text-slate-900 group-hover:text-brand-600">Alex Vance (Master Admin)</p>
+                            <p class="text-xs text-slate-500">alex.vance@company.com</p>
+                        </div>
+                    </div>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Master</span>
+                </button>
+
+                <button onclick="loginAs('user')" class="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50/50 transition-all group">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                            J
+                        </div>
+                        <div class="text-left">
+                            <p class="text-sm font-semibold text-slate-900 group-hover:text-brand-600">Jordan Lee (Data Entry)</p>
+                            <p class="text-xs text-slate-500">jordan.lee@company.com</p>
+                        </div>
+                    </div>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">User</span>
+                </button>
+
+                <div class="pt-4 border-t border-slate-100">
+                    <button onclick="simulateGoogleOAuth()" class="w-full flex items-center justify-center space-x-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-2.5 rounded-xl shadow-sm transition-all text-sm">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                        </svg>
+                        <span>Sign in with Google OAuth</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- App Container -->
+    <div id="app" class="flex h-screen overflow-hidden bg-slate-50">
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col flex-shrink-0 transition-all duration-300 z-20">
+            <!-- Logo -->
+            <div class="h-16 flex items-center justify-between px-6 bg-slate-950/50 border-b border-slate-800">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-brand-600 rounded-lg text-white">
+                        <i data-lucide="layers" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-white text-base leading-none">MDM Monitor</h1>
+                        <span class="text-[10px] text-brand-400 font-medium">Sheets Sync v2.4</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
+                <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">Main Menu</div>
+                
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-white bg-brand-600/20 text-brand-400 border border-brand-500/30">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    <span>Dashboard</span>
+                </button>
+
+                <button onclick="switchTab('data-input')" id="nav-data-input" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    <span>Data Entry Portal</span>
+                </button>
+
+                <button onclick="switchTab('sheet-view')" id="nav-sheet-view" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="table" class="w-4 h-4"></i>
+                    <span>Sheet Records</span>
+                </button>
+
+                <div id="masterOnlySection" class="pt-6">
+                    <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 mb-2">Master Controls</div>
+                    
+                    <button onclick="switchTab('schema-manager')" id="nav-schema-manager" class="nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                        <i data-lucide="sliders" class="w-4 h-4"></i>
+                        <span>Schema Manager</span>
+                    </button>
+
+                    <button onclick="openAppsScriptModal()" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all">
+                        <i data-lucide="code" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Apps Script Integration</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- User Profile Footer -->
+            <div class="p-4 border-t border-slate-800 bg-slate-950/30">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <img id="userAvatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" class="w-9 h-9 rounded-full object-cover border border-slate-700" alt="Avatar">
+                        <div class="truncate">
+                            <p id="userName" class="text-xs font-semibold text-white truncate">Alex Vance</p>
+                            <span id="userRoleBadge" class="inline-block text-[10px] font-medium text-purple-400 bg-purple-950/60 border border-purple-800/50 px-1.5 py-0.2 rounded">Master</span>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="text-slate-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-slate-800 transition-all" title="Sign Out">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+
+        <!-- Main Body -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <!-- Top Header -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10">
+                <div class="flex items-center space-x-4">
+                    <button id="mobileMenuBtn" class="text-slate-500 hover:text-slate-700 md:hidden">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    <h2 id="pageTitle" class="text-lg font-bold text-slate-800">Data Overview</h2>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <!-- Google Sheets Sync Status Indicator -->
+                    <div id="syncStatusBadge" class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span id="syncText">Sheets Linked & Active</span>
+                    </div>
+
+                    <button onclick="syncDataWithSheets()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span class="hidden sm:inline">Sync Now</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Page Views Container -->
+            <main class="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-50">
+
+
+                <!-- VIEW 1: DASHBOARD / HOMEPAGE -->
+                <section id="view-dashboard" class="space-y-6">
+                    <!-- Analytics Header -->
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-900">System Monitoring Dashboard</h3>
+                            <p class="text-xs text-slate-500">Real-time stats based on current Google Sheets entry pipeline</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <select id="dateFilter" onchange="updateDashboardChart()" class="bg-white border border-slate-300 text-slate-700 text-xs rounded-lg px-3 py-2 font-medium focus:ring-brand-500 focus:border-brand-500">
+                                <option value="7">Last 7 Days</option>
+                                <option value="14">Last 14 Days</option>
+                                <option value="30">Last 30 Days</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase">Total Submissions</p>
+                                <h4 id="statTotalEntries" class="text-2xl font-bold text-slate-900 mt-1">128</h4>
+                                <span class="text-xs text-emerald-600 font-medium inline-flex items-center mt-1">
+                                    <i data-lucide="trending-up" class="w-3 h-3 mr-1"></i> +12% this week
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                                <i data-lucide="database" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase">Today's Data</p>
+                                <h4 id="statTodayEntries" class="text-2xl font-bold text-slate-900 mt-1">18</h4>
+                                <span class="text-xs text-emerald-600 font-medium inline-flex items-center mt-1">
+                                    <i data-lucide="check-circle" class="w-3 h-3 mr-1"></i> Active Collection
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                                <i data-lucide="calendar" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase">Configured Columns</p>
+                                <h4 id="statActiveColumns" class="text-2xl font-bold text-slate-900 mt-1">6</h4>
+                                <span class="text-xs text-brand-600 font-medium inline-flex items-center mt-1">
+                                    <i data-lucide="columns" class="w-3 h-3 mr-1"></i> Master Defined
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+                                <i data-lucide="sliders" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase">Active Data Enters</p>
+                                <h4 id="statActiveUsers" class="text-2xl font-bold text-slate-900 mt-1">4 Users</h4>
+                                <span class="text-xs text-slate-500 font-medium inline-flex items-center mt-1">
+                                    Logged via Google
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                                <i data-lucide="users" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Chart Section -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-base">Number of Data Entries per Date</h4>
+                                <p class="text-xs text-slate-500">Visualization of data collection volume over time</p>
+                            </div>
+                        </div>
+                        <div class="h-72 w-full">
+                            <canvas id="entriesChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Recent Entries Log -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                            <h4 class="font-bold text-slate-800 text-sm">Recent Submitted Entries</h4>
+                            <button onclick="switchTab('sheet-view')" class="text-xs font-semibold text-brand-600 hover:text-brand-700">View All Records &rarr;</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-50 text-slate-500 border-b border-slate-100 uppercase tracking-wider font-semibold">
+                                    <tr>
+                                        <th class="p-3 pl-5">Timestamp</th>
+                                        <th class="p-3">Submitted By</th>
+                                        <th class="p-3">Primary Field</th>
+                                        <th class="p-3">Sync Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentEntriesTable" class="divide-y divide-slate-100 text-slate-600">
+                                    <!-- Dynamic rows loaded via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- VIEW 2: SCHEMA MANAGER (Master User Only) -->
+                <section id="view-schema-manager" class="hidden space-y-6">
+                    <div class="flex items-center justify-between bg-indigo-900 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+                        <div class="relative z-10 max-w-xl">
+                            <span class="bg-indigo-700/80 text-indigo-200 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md mb-2 inline-block">Master Control Panel</span>
+                            <h3 class="text-xl font-bold">Dynamic Sheet Schema Configurator</h3>
+                            <p class="text-xs text-indigo-200 mt-1">Define columns for your Google Sheet database. Changes will immediately update data entry forms for all standard users.</p>
+                        </div>
+                        <i data-lucide="settings-2" class="w-32 h-32 absolute -right-6 -bottom-6 text-indigo-800/50 pointer-events-none"></i>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Column Builder -->
+                        <div class="lg:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                            <h4 id="schemaFormTitle" class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i data-lucide="plus-circle" class="w-4 h-4 text-brand-600"></i>
+                                <span>Add New Column</span>
+                            </h4>
+
+                            <form id="columnSchemaForm" onsubmit="saveColumnSchema(event)" class="space-y-4">
+                                <input type="hidden" id="editColId" value="">
+                                
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Column Name / Title</label>
+                                    <input type="text" id="colName" required placeholder="e.g. Device ID, Store Location" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Data Type</label>
+                                    <select id="colType" onchange="toggleSelectOptionsInput()" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                                        <option value="text">Short Text</option>
+                                        <option value="number">Numeric Value</option>
+                                        <option value="date">Date</option>
+                                        <option value="select">Dropdown Options</option>
+                                        <option value="checkbox">Checkbox (Boolean)</option>
+                                    </select>
+                                </div>
+
+                                <div id="selectOptionsContainer" class="hidden">
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Dropdown Options (Comma separated)</label>
+                                    <input type="text" id="colOptions" placeholder="Active, Pending, Offline" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                                </div>
+
+                                <div class="flex items-center space-x-2 pt-2">
+                                    <input type="checkbox" id="colRequired" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                                    <label for="colRequired" class="text-xs font-medium text-slate-700">Mark as Required Field</label>
+                                </div>
+
+                                <div class="pt-2 flex gap-2">
+                                    <button type="submit" id="saveColBtn" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2 rounded-lg text-xs shadow-sm transition-all">
+                                        Add Column to Schema
+                                    </button>
+                                    <button type="button" onclick="resetColumnForm()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-3 py-2 rounded-lg text-xs">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Active Schema List -->
+                        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h4 class="font-bold text-slate-800 text-sm">Active Google Sheet Columns</h4>
+                                        <p class="text-xs text-slate-500">Reorder or adjust schema structure below</p>
+                                    </div>
+                                    <span id="colCountBadge" class="bg-brand-50 text-brand-700 text-xs font-bold px-2.5 py-1 rounded-full border border-brand-200">6 Columns</span>
+                                </div>
+
+                                <div class="space-y-2" id="schemaColumnList">
+                                    <!-- Dynamic list of columns loaded via JS -->
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+                                <p class="text-xs text-slate-500">Need to link with a physical Google Sheet?</p>
+                                <button onclick="openAppsScriptModal()" class="text-xs font-semibold text-brand-600 hover:underline inline-flex items-center">
+                                    <i data-lucide="link" class="w-3.5 h-3.5 mr-1"></i> Webhook / Sheet Sync Config
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- VIEW 3: DATA INPUT PORTAL -->
+                <section id="view-data-input" class="hidden space-y-6">
+                    <div class="max-w-2xl mx-auto bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="border-b border-slate-100 pb-4 mb-6 flex items-center justify-between">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Data Entry Submission</h3>
+                                <p class="text-xs text-slate-500">Fields are generated dynamically based on Master Schema</p>
+                            </div>
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span> Form Active
+                            </span>
+                        </div>
+
+                        <form id="dynamicDataForm" onsubmit="handleDynamicFormSubmit(event)" class="space-y-5">
+                            <!-- Fields render dynamically -->
+                            <div id="dynamicFormFields" class="space-y-4"></div>
+
+                            <div class="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+                                <button type="button" onclick="document.getElementById('dynamicDataForm').reset()" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition-all">
+                                    Clear Form
+                                </button>
+                                <button type="submit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-brand-500/20 transition-all flex items-center space-x-2">
+                                    <i data-lucide="send" class="w-4 h-4"></i>
+                                    <span>Submit Entry to Sheet</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+
+                <!-- VIEW 4: SHEET RECORDS TABLE -->
+                <section id="view-sheet-view" class="hidden space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-900">Google Sheet Master Dataset</h3>
+                                <p class="text-xs text-slate-500">Live records sync output mirror</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="exportToCSV()" class="inline-flex items-center space-x-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-all">
+                                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                    <span>Export CSV</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filter Controls -->
+                        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                            <div class="relative flex-1">
+                                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                                <input type="text" id="recordsSearch" onkeyup="filterRecordsTable()" placeholder="Search all fields..." class="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-brand-500 focus:border-brand-500">
+                            </div>
+                            <input type="date" id="recordsDateFilter" onchange="filterRecordsTable()" class="text-xs border border-slate-200 rounded-xl px-3 py-2 text-slate-600">
+                        </div>
+
+                        <!-- Main Table -->
+                        <div class="overflow-x-auto border border-slate-100 rounded-xl custom-scrollbar">
+                            <table class="w-full text-left text-xs">
+                                <thead id="recordsTableHeader" class="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase tracking-wider font-semibold">
+                                    <!-- Dynamic Header generated from schema -->
+                                </thead>
+                                <tbody id="recordsTableBody" class="divide-y divide-slate-100 text-slate-700">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+
+    <!-- Google Apps Script Modal -->
+    <div id="appsScriptModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-slate-100 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                        <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Google Sheet Integration Hub</h3>
+                        <p class="text-xs text-slate-500">Link MDM Monitoring directly with your Google Sheet</p>
+                    </div>
+                </div>
+                <button onclick="closeAppsScriptModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-4 py-4 custom-scrollbar text-xs text-slate-600">
+                <div class="p-3 bg-brand-50 border border-brand-200 rounded-xl text-brand-800">
+                    <p class="font-semibold mb-1">How Real Google Sheet Sync Works:</p>
+                    <ol class="list-decimal pl-4 space-y-1 text-[11px]">
+                        <li>Open your target Google Sheet. Go to <strong>Extensions &gt; Apps Script</strong>.</li>
+                        <li>Paste the snippet below into `Code.gs` and click <strong>Deploy &gt; New Deployment</strong>.</li>
+                        <li>Select <strong>Web app</strong>, set access to <strong>Anyone</strong>, and deploy.</li>
+                        <li>Paste your Web App URL into the configuration input field below!</li>
+                    </ol>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-800 mb-1">Google Apps Script Web App URL</label>
+                    <input type="url" id="googleScriptUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-xl focus:ring-brand-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-semibold text-slate-800">Google Apps Script Snippet (`Code.gs`)</span>
+                        <button onclick="copyScriptCode()" class="text-brand-600 hover:text-brand-700 font-semibold inline-flex items-center gap-1">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Script
+                        </button>
+                    </div>
+                    <pre class="bg-slate-900 text-emerald-400 p-4 rounded-xl font-mono text-[11px] overflow-x-auto leading-relaxed" id="scriptCodeText">
+function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var data = JSON.parse(e.postData.contents);
+    
+    // Add header if empty
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(data.headers);
+    }
+    
+    // Append row data
+    sheet.appendRow(data.rowValues);
+    
+    return ContentService.createTextOutput(JSON.stringify({result: "success"}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(error) {
+    return ContentService.createTextOutput(JSON.stringify({result: "error", error: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  return ContentService.createTextOutput("MDM Monitoring Webhook Endpoint Active");
+}</pre>
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 flex justify-end space-x-2">
+                <button onclick="closeAppsScriptModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs">
+                    Cancel
+                </button>
+                <button onclick="saveAppsScriptUrl()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl text-xs shadow-md">
+                    Save Endpoint & Connect
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- DATA STATE MANAGEMENT ---
+        let currentUser = null;
+        let chartInstance = null;
+        let scriptWebhookUrl = "";
+
+        // Default Schema Columns defined by Master
+        let schemaColumns = [
+            { id: 'col_1', name: 'Entry Date', type: 'date', required: true },
+            { id: 'col_2', name: 'Location / Branch', type: 'select', options: ['Main Office', 'North Hub', 'South Hub', 'West Warehouse'], required: true },
+            { id: 'col_3', name: 'Device ID', type: 'text', required: true },
+            { id: 'col_4', name: 'Status', type: 'select', options: ['Operational', 'Maintenance Required', 'Decommissioned'], required: true },
+            { id: 'col_5', name: 'Units Count', type: 'number', required: false },
+            { id: 'col_6', name: 'Inspected', type: 'checkbox', required: false }
+        ];
+
+        // Default Pre-loaded Records for immediate demo usability
+        let dataset = [
+            {
+                id: 'rec_101',
+                timestamp: '2026-09-18 10:15',
+                submittedBy: 'Jordan Lee',
+                data: {
+                    col_1: '2026-09-18',
+                    col_2: 'Main Office',
+                    col_3: 'DEV-8841',
+                    col_4: 'Operational',
+                    col_5: 14,
+                    col_6: true
+                }
+            },
+            {
+                id: 'rec_102',
+                timestamp: '2026-09-18 09:30',
+                submittedBy: 'Jordan Lee',
+                data: {
+                    col_1: '2026-09-18',
+                    col_2: 'North Hub',
+                    col_3: 'DEV-9021',
+                    col_4: 'Maintenance Required',
+                    col_5: 3,
+                    col_6: false
+                }
+            },
+            {
+                id: 'rec_103',
+                timestamp: '2026-09-17 14:20',
+                submittedBy: 'Alex Vance',
+                data: {
+                    col_1: '2026-09-17',
+                    col_2: 'South Hub',
+                    col_3: 'DEV-1002',
+                    col_4: 'Operational',
+                    col_5: 22,
+                    col_6: true
+                }
+            },
+            {
+                id: 'rec_104',
+                timestamp: '2026-09-17 11:05',
+                submittedBy: 'Jordan Lee',
+                data: {
+                    col_1: '2026-09-17',
+                    col_2: 'West Warehouse',
+                    col_3: 'DEV-5541',
+                    col_4: 'Decommissioned',
+                    col_5: 1,
+                    col_6: true
+                }
+            },
+            {
+                id: 'rec_105',
+                timestamp: '2026-09-16 16:45',
+                submittedBy: 'Alex Vance',
+                data: {
+                    col_1: '2026-09-16',
+                    col_2: 'Main Office',
+                    col_3: 'DEV-3321',
+                    col_4: 'Operational',
+                    col_5: 8,
+                    col_6: true
+                }
+            }
+        ];
+
+
+        // --- AUTHENTICATION FLOWS ---
+        function loginAs(role) {
+            if (role === 'master') {
+                currentUser = {
+                    name: 'Alex Vance',
+                    email: 'alex.vance@company.com',
+                    role: 'master',
+                    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
+                };
+            } else {
+                currentUser = {
+                    name: 'Jordan Lee',
+                    email: 'jordan.lee@company.com',
+                    role: 'user',
+                    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80'
+                };
+            }
+            applyUserPermissions();
+            document.getElementById('loginModal').classList.add('hidden');
+            showToast(`Signed in as ${currentUser.name} (${currentUser.role.toUpperCase()})`, 'success');
+        }
+
+        function simulateGoogleOAuth() {
+            showToast('Initializing Google OAuth popup...', 'info');
+            setTimeout(() => {
+                loginAs('master');
+            }, 800);
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('loginModal').classList.remove('hidden');
+            showToast('Logged out successfully', 'info');
+        }
+
+        function applyUserPermissions() {
+            if (!currentUser) return;
+
+            document.getElementById('userName').textContent = currentUser.name;
+            document.getElementById('userAvatar').src = currentUser.avatar;
+
+            const badge = document.getElementById('userRoleBadge');
+            const masterOnlySec = document.getElementById('masterOnlySection');
+
+            if (currentUser.role === 'master') {
+                badge.textContent = 'Master Admin';
+                badge.className = 'inline-block text-[10px] font-medium text-purple-400 bg-purple-950/60 border border-purple-800/50 px-1.5 py-0.2 rounded';
+                masterOnlySec.classList.remove('hidden');
+            } else {
+                badge.textContent = 'Data Entry';
+                badge.className = 'inline-block text-[10px] font-medium text-blue-400 bg-blue-950/60 border border-blue-800/50 px-1.5 py-0.2 rounded';
+                masterOnlySec.classList.add('hidden');
+                
+                // If user is on master-only tab, redirect
+                const currentTab = document.querySelector('.nav-btn.bg-brand-600\\/20')?.id;
+                if (currentTab === 'nav-schema-manager') {
+                    switchTab('dashboard');
+                }
+            }
+        }
+
+        // --- NAVIGATION & TAB SWITCHING ---
+        function switchTab(tabId) {
+            // Update Active Nav Styles
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-slate-200';
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = 'nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-white bg-brand-600/20 text-brand-400 border border-brand-500/30';
+            }
+
+            // Hide all views
+            ['dashboard', 'schema-manager', 'data-input', 'sheet-view'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+            });
+
+            // Show selected view
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            // Header titles
+            const titles = {
+                'dashboard': 'Data Overview',
+                'schema-manager': 'Schema Manager (Master Config)',
+                'data-input': 'Data Entry Portal',
+                'sheet-view': 'Google Sheet Master Dataset'
+            };
+            document.getElementById('pageTitle').textContent = titles[tabId] || 'MDM Monitoring';
+
+            // Refresh tab-specific views
+            if (tabId === 'dashboard') updateDashboardChart();
+            if (tabId === 'data-input') renderDynamicForm();
+            if (tabId === 'sheet-view') renderRecordsTable();
+            if (tabId === 'schema-manager') renderSchemaList();
+        }
+
+
+        // --- DASHBOARD ANALYTICS & CHART ---
+        function updateDashboardChart() {
+            // Update stats cards
+            document.getElementById('statTotalEntries').textContent = dataset.length;
+            document.getElementById('statActiveColumns').textContent = schemaColumns.length;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayCount = dataset.filter(d => d.timestamp.startsWith(todayStr) || d.data.col_1 === todayStr).length;
+            document.getElementById('statTodayEntries').textContent = todayCount;
+
+            // Render Recent Entries
+            const recentTable = document.getElementById('recentEntriesTable');
+            recentTable.innerHTML = '';
+            
+            dataset.slice(0, 5).forEach(rec => {
+                const primaryCol = schemaColumns[0] ? rec.data[schemaColumns[0].id] || 'N/A' : 'N/A';
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition-all";
+                tr.innerHTML = `
+                    <td class="p-3 pl-5 font-mono text-[11px] text-slate-500">${rec.timestamp}</td>
+                    <td class="p-3 font-medium text-slate-900">${rec.submittedBy}</td>
+                    <td class="p-3 text-slate-700">${primaryCol}</td>
+                    <td class="p-3">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800">
+                            Synced
+                        </span>
+                    </td>
+                `;
+                recentTable.appendChild(tr);
+            });
+
+            // Generate Date Chart Data
+            const daysLimit = parseInt(document.getElementById('dateFilter').value) || 7;
+            const datesMap = {};
+
+            // Initialize last N days
+            for (let i = daysLimit - 1; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateKey = d.toISOString().split('T')[0];
+                datesMap[dateKey] = 0;
+            }
+
+            // Aggregate counts
+            dataset.forEach(rec => {
+                const entryDate = rec.data.col_1 || rec.timestamp.split(' ')[0];
+                if (datesMap[entryDate] !== undefined) {
+                    datesMap[entryDate]++;
+                }
+            });
+
+            const labels = Object.keys(datesMap);
+            const dataCounts = Object.values(datesMap);
+
+            // Render Chart.js
+            const ctx = document.getElementById('entriesChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Submissions per Date',
+                        data: dataCounts,
+                        backgroundColor: '#6366f1',
+                        borderRadius: 6,
+                        hoverBackgroundColor: '#4f46e5'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { precision: 0 }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+
+        // --- SCHEMA MANAGER LOGIC ---
+        function toggleSelectOptionsInput() {
+            const type = document.getElementById('colType').value;
+            const optContainer = document.getElementById('selectOptionsContainer');
+            if (type === 'select') {
+                optContainer.classList.remove('hidden');
+            } else {
+                optContainer.classList.add('hidden');
+            }
+        }
+
+        function saveColumnSchema(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editColId').value;
+            const colName = document.getElementById('colName').value.trim();
+            const colType = document.getElementById('colType').value;
+            const colRequired = document.getElementById('colRequired').checked;
+            const colOptionsStr = document.getElementById('colOptions').value;
+
+            let optionsArr = [];
+            if (colType === 'select') {
+                optionsArr = colOptionsStr.split(',').map(s => s.trim()).filter(Boolean);
+            }
+
+            if (editId) {
+                // Edit existing
+                const index = schemaColumns.findIndex(c => c.id === editId);
+                if (index !== -1) {
+                    schemaColumns[index] = { id: editId, name: colName, type: colType, required: colRequired, options: optionsArr };
+                    showToast('Column schema updated!', 'success');
+                }
+            } else {
+                // Add new
+                const newCol = {
+                    id: 'col_' + Date.now(),
+                    name: colName,
+                    type: colType,
+                    required: colRequired,
+                    options: optionsArr
+                };
+                schemaColumns.push(newCol);
+                showToast('New column added to Master Schema!', 'success');
+            }
+
+            resetColumnForm();
+            renderSchemaList();
+        }
+
+        function editColumn(id) {
+            const col = schemaColumns.find(c => c.id === id);
+            if (!col) return;
+
+            document.getElementById('editColId').value = col.id;
+            document.getElementById('colName').value = col.name;
+            document.getElementById('colType').value = col.type;
+            document.getElementById('colRequired').checked = col.required;
+            document.getElementById('colOptions').value = col.options ? col.options.join(', ') : '';
+
+            toggleSelectOptionsInput();
+            document.getElementById('schemaFormTitle').innerHTML = `<i data-lucide="edit" class="w-4 h-4 text-brand-600"></i> Edit Column Schema`;
+            document.getElementById('saveColBtn').textContent = 'Update Column';
+            lucide.createIcons();
+        }
+
+        function deleteColumn(id) {
+            if (schemaColumns.length <= 1) {
+                showToast('Cannot delete all columns. At least one field required.', 'error');
+                return;
+            }
+            schemaColumns = schemaColumns.filter(c => c.id !== id);
+            showToast('Column removed from schema', 'info');
+            renderSchemaList();
+        }
+
+        function resetColumnForm() {
+            document.getElementById('columnSchemaForm').reset();
+            document.getElementById('editColId').value = '';
+            document.getElementById('schemaFormTitle').innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-brand-600"></i> Add New Column`;
+            document.getElementById('saveColBtn').textContent = 'Add Column to Schema';
+            toggleSelectOptionsInput();
+            lucide.createIcons();
+        }
+
+        function renderSchemaList() {
+            const listContainer = document.getElementById('schemaColumnList');
+            document.getElementById('colCountBadge').textContent = `${schemaColumns.length} Columns`;
+            listContainer.innerHTML = '';
+
+            schemaColumns.forEach((col, index) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white transition-all';
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="text-xs font-mono text-slate-400 w-5">#${index + 1}</span>
+                        <div>
+                            <p class="text-xs font-bold text-slate-800">${col.name} ${col.required ? '<span class="text-rose-500">*</span>' : ''}</p>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] font-medium uppercase px-2 py-0.5 bg-slate-200 text-slate-700 rounded">${col.type}</span>
+                                ${col.type === 'select' ? `<span class="text-[10px] text-slate-500">(${col.options.length} options)</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-1">
+                        <button onclick="editColumn('${col.id}')" class="p-1.5 text-slate-400 hover:text-brand-600 rounded-lg hover:bg-slate-100" title="Edit">
+                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteColumn('${col.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100" title="Delete">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+
+        // --- DYNAMIC FORM GENERATOR ---
+        function renderDynamicForm() {
+            const container = document.getElementById('dynamicFormFields');
+            container.innerHTML = '';
+
+            schemaColumns.forEach(col => {
+                const wrapper = document.createElement('div');
+                wrapper.className = "space-y-1";
+
+                const label = document.createElement('label');
+                label.className = "block text-xs font-semibold text-slate-700";
+                label.innerHTML = `${col.name} ${col.required ? '<span class="text-rose-500">*</span>' : ''}`;
+                wrapper.appendChild(label);
+
+                let fieldHtml = '';
+
+                switch (col.type) {
+                    case 'text':
+                        fieldHtml = `<input type="text" name="${col.id}" ${col.required ? 'required' : ''} placeholder="Enter ${col.name}" class="w-full text-xs px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">`;
+                        break;
+                    case 'number':
+                        fieldHtml = `<input type="number" name="${col.id}" ${col.required ? 'required' : ''} placeholder="0" class="w-full text-xs px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">`;
+                        break;
+                    case 'date':
+                        fieldHtml = `<input type="date" name="${col.id}" ${col.required ? 'required' : ''} class="w-full text-xs px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">`;
+                        break;
+                    case 'select':
+                        const opts = col.options.map(o => `<option value="${o}">${o}</option>`).join('');
+                        fieldHtml = `
+                            <select name="${col.id}" ${col.required ? 'required' : ''} class="w-full text-xs px-3 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                                <option value="">-- Select Option --</option>
+                                ${opts}
+                            </select>`;
+                        break;
+                    case 'checkbox':
+                        fieldHtml = `
+                            <div class="flex items-center space-x-2 pt-1">
+                                <input type="checkbox" name="${col.id}" id="check_${col.id}" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+                                <label for="check_${col.id}" class="text-xs text-slate-600">Yes / Confirmed</label>
+                            </div>`;
+                        break;
+                }
+
+                wrapper.innerHTML += fieldHtml;
+                container.appendChild(wrapper);
+            });
+        }
+
+        function handleDynamicFormSubmit(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const entryData = {};
+
+            schemaColumns.forEach(col => {
+                if (col.type === 'checkbox') {
+                    entryData[col.id] = formData.has(col.id);
+                } else {
+                    entryData[col.id] = formData.get(col.id) || '';
+                }
+            });
+
+            const newRecord = {
+                id: 'rec_' + Date.now(),
+                timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                submittedBy: currentUser ? currentUser.name : 'Data User',
+                data: entryData
+            };
+
+            dataset.unshift(newRecord);
+            
+            // Sync with physical sheet if configured
+            if (scriptWebhookUrl) {
+                syncSingleRecordToGoogleSheet(newRecord);
+            }
+
+            showToast('Data Entry submitted successfully!', 'success');
+            e.target.reset();
+        }
+
+
+        // --- RECORDS DATASET TABLE ---
+        function renderRecordsTable() {
+            const headerContainer = document.getElementById('recordsTableHeader');
+            const bodyContainer = document.getElementById('recordsTableBody');
+
+            // Header
+            let headerHtml = '<tr><th class="p-3 pl-5">Timestamp</th><th class="p-3">User</th>';
+            schemaColumns.forEach(col => {
+                headerHtml += `<th class="p-3">${col.name}</th>`;
+            });
+            headerHtml += '</tr>';
+            headerContainer.innerHTML = headerHtml;
+
+            // Body
+            bodyContainer.innerHTML = '';
+            dataset.forEach(rec => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition-all border-b border-slate-100";
+
+                let rowHtml = `
+                    <td class="p-3 pl-5 font-mono text-[11px] text-slate-500 whitespace-nowrap">${rec.timestamp}</td>
+                    <td class="p-3 font-semibold text-slate-900 whitespace-nowrap">${rec.submittedBy}</td>
+                `;
+
+                schemaColumns.forEach(col => {
+                    const val = rec.data[col.id];
+                    let displayVal = val !== undefined ? val : '-';
+
+                    if (col.type === 'checkbox') {
+                        displayVal = val ? '<span class="text-emerald-600 font-bold">✓</span>' : '<span class="text-slate-300">✕</span>';
+                    }
+
+                    rowHtml += `<td class="p-3 whitespace-nowrap">${displayVal}</td>`;
+                });
+
+                tr.innerHTML = rowHtml;
+                bodyContainer.appendChild(tr);
+            });
+        }
+
+        function filterRecordsTable() {
+            const query = document.getElementById('recordsSearch').value.toLowerCase();
+            const dateVal = document.getElementById('recordsDateFilter').value;
+
+            const rows = document.getElementById('recordsTableBody').getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                const text = rows[i].innerText.toLowerCase();
+                const matchesSearch = text.includes(query);
+                const matchesDate = dateVal ? text.includes(dateVal) : true;
+
+                if (matchesSearch && matchesDate) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        }
+
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Header
+            const headers = ['Timestamp', 'Submitted By', ...schemaColumns.map(c => `"${c.name}"`)];
+            csvContent += headers.join(",") + "\r\n";
+
+            // Rows
+            dataset.forEach(rec => {
+                const rowValues = [
+                    `"${rec.timestamp}"`,
+                    `"${rec.submittedBy}"`,
+                    ...schemaColumns.map(c => `"${rec.data[c.id] !== undefined ? rec.data[c.id] : ''}"`)
+                ];
+                csvContent += rowValues.join(",") + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `MDM_Monitoring_Export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast('CSV Dataset exported successfully!', 'success');
+        }
+
+
+        // --- GOOGLE APPS SCRIPT SYNC INTEGRATION ---
+        function openAppsScriptModal() {
+            document.getElementById('appsScriptModal').classList.remove('hidden');
+        }
+
+        function closeAppsScriptModal() {
+            document.getElementById('appsScriptModal').classList.add('hidden');
+        }
+
+        function saveAppsScriptUrl() {
+            const url = document.getElementById('googleScriptUrlInput').value.trim();
+            scriptWebhookUrl = url;
+
+            const statusBadge = document.getElementById('syncStatusBadge');
+            const syncText = document.getElementById('syncText');
+
+            if (url) {
+                statusBadge.classList.remove('hidden');
+                syncText.textContent = 'Sheets Live Linked';
+                showToast('Google Sheet Endpoint linked!', 'success');
+            } else {
+                statusBadge.classList.add('hidden');
+                showToast('Endpoint cleared. Running in local state mode.', 'info');
+            }
+
+            closeAppsScriptModal();
+        }
+
+        function copyScriptCode() {
+            const codeText = document.getElementById('scriptCodeText').innerText;
+            
+            // Clipboard copy fallback
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = codeText;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+
+            showToast('Apps Script copied to clipboard!', 'success');
+        }
+
+        function syncDataWithSheets() {
+            showToast('Synchronizing local records with Google Sheets...', 'info');
+            setTimeout(() => {
+                showToast('All records synced with Google Sheet pipeline', 'success');
+            }, 1000);
+        }
+
+        function syncSingleRecordToGoogleSheet(record) {
+            if (!scriptWebhookUrl) return;
+
+            const headers = ['Timestamp', 'Submitted By', ...schemaColumns.map(c => c.name)];
+            const rowValues = [
+                record.timestamp,
+                record.submittedBy,
+                ...schemaColumns.map(c => record.data[c.id] !== undefined ? record.data[c.id] : '')
+            ];
+
+            fetch(scriptWebhookUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ headers, rowValues })
+            }).then(() => {
+                showToast('Pushed record to live Google Sheet!', 'success');
+            }).catch(err => {
+                console.error('Sheet Sync Error:', err);
+            });
+        }
+
+
+        // --- TOAST SYSTEM ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgColors = {
+                success: 'bg-slate-900 border-emerald-500 text-white',
+                error: 'bg-slate-900 border-rose-500 text-white',
+                info: 'bg-slate-900 border-brand-500 text-white'
+            };
+
+            const icons = {
+                success: '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>',
+                error: '<i data-lucide="alert-circle" class="w-4 h-4 text-rose-400"></i>',
+                info: '<i data-lucide="info" class="w-4 h-4 text-brand-400"></i>'
+            };
+
+            toast.className = `pointer-events-auto flex items-center space-x-2.5 px-4 py-3 rounded-xl border-l-4 shadow-xl text-xs transition-all duration-300 transform translate-y-2 opacity-0 ${bgColors[type]}`;
+            toast.innerHTML = `${icons[type]} <span>${message}</span>`;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Animate In
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            // Animate Out
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            lucide.createIcons();
+            loginAs('master'); // Default login as Master Admin for demo
+            switchTab('dashboard');
+        };
+    </script>
+</body>
+</html>
