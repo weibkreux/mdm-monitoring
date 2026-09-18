@@ -1237,25 +1237,27 @@ function doGet(e) {
         }
 
         // --- INITIALIZATION ---
-        window.onload = function() {
+    window.onload = function() {
     lucide.createIcons();
     switchTab('dashboard');
 
-    // Fetch authenticated user email directly from Google Apps Script
     const webhookUrl = localStorage.getItem('mdm_script_url');
     if (webhookUrl) {
         fetch(webhookUrl + '?action=getUserEmail')
             .then(res => res.json())
             .then(data => {
-                if (data.email) {
-                    // Update user state with actual logged-in Google email
+                if (data.email && data.email !== '') {
+                    // Replaces the placeholder with your actual Google email
                     currentUser = { email: data.email, role: 'user', name: data.email.split('@')[0] };
-                    document.getElementById('user-profile-name').innerText = currentUser.name;
+                    const nameEl = document.getElementById('user-profile-name');
+                    if (nameEl) nameEl.innerText = currentUser.name;
+                } else {
+                    loginAs('master'); // Fallback if browser blocks email reading
                 }
             })
-            .catch(() => loginAs('master')); // Fallback to demo mode if offline/unconnected
+            .catch(() => loginAs('master'));
     } else {
-        loginAs('master'); // Default for demo if no Google Sheet is connected yet
+        loginAs('master');
     }
 };
     </script>
