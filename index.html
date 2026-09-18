@@ -1238,10 +1238,26 @@ function doGet(e) {
 
         // --- INITIALIZATION ---
         window.onload = function() {
-            lucide.createIcons();
-            loginAs('master'); // Default login as Master Admin for demo
-            switchTab('dashboard');
-        };
+    lucide.createIcons();
+    switchTab('dashboard');
+
+    // Fetch authenticated user email directly from Google Apps Script
+    const webhookUrl = localStorage.getItem('mdm_script_url');
+    if (webhookUrl) {
+        fetch(webhookUrl + '?action=getUserEmail')
+            .then(res => res.json())
+            .then(data => {
+                if (data.email) {
+                    // Update user state with actual logged-in Google email
+                    currentUser = { email: data.email, role: 'user', name: data.email.split('@')[0] };
+                    document.getElementById('user-profile-name').innerText = currentUser.name;
+                }
+            })
+            .catch(() => loginAs('master')); // Fallback to demo mode if offline/unconnected
+    } else {
+        loginAs('master'); // Default for demo if no Google Sheet is connected yet
+    }
+};
     </script>
 </body>
 </html>
