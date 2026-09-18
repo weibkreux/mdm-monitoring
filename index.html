@@ -1133,6 +1133,7 @@ function doGet(e) {
         }
 
         // --- INITIALIZATION ---
+       // --- INITIALIZATION ---
         window.onload = function() {
             lucide.createIcons();
             switchTab('dashboard');
@@ -1147,10 +1148,8 @@ function doGet(e) {
                 const badge = document.getElementById('syncStatusBadge');
                 if (badge) badge.classList.remove('hidden');
 
-                // Auto-authenticate active Google user session on load
                 triggerGoogleLogin();
             } else {
-                // If no sheet URL is connected yet, keep modal open
                 document.getElementById('loginModal').classList.remove('hidden');
             }
         };
