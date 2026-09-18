@@ -1241,30 +1241,37 @@ function doGet(e) {
     lucide.createIcons();
     switchTab('dashboard');
 
-    // Load saved URL from storage into runtime memory
     const webhookUrl = localStorage.getItem('mdm_script_url');
     if (webhookUrl) {
         scriptWebhookUrl = webhookUrl;
-        document.getElementById('googleScriptUrlInput').value = webhookUrl;
-        document.getElementById('syncStatusBadge').classList.remove('hidden');
+        
+        // Populate modal input field if present
+        const scriptInput = document.getElementById('googleScriptUrlInput');
+        if (scriptInput) scriptInput.value = webhookUrl;
+        
+        const badge = document.getElementById('syncStatusBadge');
+        if (badge) badge.classList.remove('hidden');
 
-        // Fetch logged in Google email
-        fetch(webhookUrl + '?action=getUserEmail')
-            .then(res => res.json())
-            .then(data => {
-                if (data.email && data.email !== '') {
-                    currentUser = { 
-                        email: data.email, 
-                        role: 'user', 
-                        name: data.email.split('@')[0],
-                        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
-                    };
-                    applyUserPermissions();
-                } else {
-                    loginAs('master');
-                }
-            })
-            .catch(() => loginAs('master'));
+        // Create a JSONP request to fetch user email across origins
+        const script = document.createElement('script');
+        window.handleGoogleUserResponse = function(data) {
+            if (data && data.email) {
+                currentUser = { 
+                    email: data.email, 
+                    role: 'user', 
+                    name: data.email.split('@')[0],
+                    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
+                };
+                applyUserPermissions();
+            } else {
+                loginAs('master');
+            }
+            document.body.removeChild(script);
+        };
+
+        script.src = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'action=getUserEmail&callback=handleGoogleUserResponse';
+        script.onerror = function() { loginAs('master'); };
+        document.body.appendChild(script);
     } else {
         loginAs('master');
     }
