@@ -56,7 +56,6 @@
 </head>
 <body class="h-full font-sans antialiased text-slate-800 flex flex-col min-h-screen">
 
-    
     <!-- Toast Notification Container -->
     <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
 
@@ -114,7 +113,6 @@
             </div>
         </div>
     </div>
-
 
     <!-- App Container -->
     <div id="app" class="flex h-screen overflow-hidden bg-slate-50">
@@ -185,7 +183,6 @@
             </div>
         </aside>
 
-
         <!-- Main Body -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
             <!-- Top Header -->
@@ -213,7 +210,6 @@
 
             <!-- Page Views Container -->
             <main class="flex-1 overflow-y-auto p-6 custom-scrollbar bg-slate-50">
-
 
                 <!-- VIEW 1: DASHBOARD / HOMEPAGE -->
                 <section id="view-dashboard" class="space-y-6">
@@ -324,7 +320,6 @@
                     </div>
                 </section>
 
-
                 <!-- VIEW 2: SCHEMA MANAGER (Master User Only) -->
                 <section id="view-schema-manager" class="hidden space-y-6">
                     <div class="flex items-center justify-between bg-indigo-900 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
@@ -410,7 +405,6 @@
                     </div>
                 </section>
 
-
                 <!-- VIEW 3: DATA INPUT PORTAL -->
                 <section id="view-data-input" class="hidden space-y-6">
                     <div class="max-w-2xl mx-auto bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
@@ -440,7 +434,6 @@
                         </form>
                     </div>
                 </section>
-
 
                 <!-- VIEW 4: SHEET RECORDS TABLE -->
                 <section id="view-sheet-view" class="hidden space-y-6">
@@ -483,7 +476,6 @@
             </main>
         </div>
     </div>
-
 
     <!-- Google Apps Script Modal -->
     <div id="appsScriptModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -549,7 +541,17 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  return ContentService.createTextOutput("MDM Monitoring Webhook Endpoint Active");
+  var action = e.parameter ? e.parameter.action : '';
+  var callback = e.parameter ? e.parameter.callback : null;
+  var activeUser = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail();
+  var result = JSON.stringify({ email: activeUser });
+
+  if (callback) {
+    return ContentService.createTextOutput(callback + '(' + result + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(result)
+    .setMimeType(ContentService.MimeType.JSON);
 }</pre>
                 </div>
             </div>
@@ -564,7 +566,6 @@ function doGet(e) {
             </div>
         </div>
     </div>
-
 
     <script>
         // --- DATA STATE MANAGEMENT ---
@@ -651,7 +652,6 @@ function doGet(e) {
             }
         ];
 
-
         // --- AUTHENTICATION FLOWS ---
         function loginAs(role) {
             if (role === 'master') {
@@ -705,7 +705,6 @@ function doGet(e) {
                 badge.className = 'inline-block text-[10px] font-medium text-blue-400 bg-blue-950/60 border border-blue-800/50 px-1.5 py-0.2 rounded';
                 masterOnlySec.classList.add('hidden');
                 
-                // If user is on master-only tab, redirect
                 const currentTab = document.querySelector('.nav-btn.bg-brand-600\\/20')?.id;
                 if (currentTab === 'nav-schema-manager') {
                     switchTab('dashboard');
@@ -715,7 +714,6 @@ function doGet(e) {
 
         // --- NAVIGATION & TAB SWITCHING ---
         function switchTab(tabId) {
-            // Update Active Nav Styles
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.className = 'nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-slate-200';
             });
@@ -725,15 +723,12 @@ function doGet(e) {
                 activeBtn.className = 'nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-white bg-brand-600/20 text-brand-400 border border-brand-500/30';
             }
 
-            // Hide all views
             ['dashboard', 'schema-manager', 'data-input', 'sheet-view'].forEach(v => {
                 document.getElementById(`view-${v}`).classList.add('hidden');
             });
 
-            // Show selected view
             document.getElementById(`view-${tabId}`).classList.remove('hidden');
 
-            // Header titles
             const titles = {
                 'dashboard': 'Data Overview',
                 'schema-manager': 'Schema Manager (Master Config)',
@@ -742,17 +737,14 @@ function doGet(e) {
             };
             document.getElementById('pageTitle').textContent = titles[tabId] || 'MDM Monitoring';
 
-            // Refresh tab-specific views
             if (tabId === 'dashboard') updateDashboardChart();
             if (tabId === 'data-input') renderDynamicForm();
             if (tabId === 'sheet-view') renderRecordsTable();
             if (tabId === 'schema-manager') renderSchemaList();
         }
 
-
         // --- DASHBOARD ANALYTICS & CHART ---
         function updateDashboardChart() {
-            // Update stats cards
             document.getElementById('statTotalEntries').textContent = dataset.length;
             document.getElementById('statActiveColumns').textContent = schemaColumns.length;
 
@@ -760,7 +752,6 @@ function doGet(e) {
             const todayCount = dataset.filter(d => d.timestamp.startsWith(todayStr) || d.data.col_1 === todayStr).length;
             document.getElementById('statTodayEntries').textContent = todayCount;
 
-            // Render Recent Entries
             const recentTable = document.getElementById('recentEntriesTable');
             recentTable.innerHTML = '';
             
@@ -781,11 +772,9 @@ function doGet(e) {
                 recentTable.appendChild(tr);
             });
 
-            // Generate Date Chart Data
             const daysLimit = parseInt(document.getElementById('dateFilter').value) || 7;
             const datesMap = {};
 
-            // Initialize last N days
             for (let i = daysLimit - 1; i >= 0; i--) {
                 const d = new Date();
                 d.setDate(d.getDate() - i);
@@ -793,7 +782,6 @@ function doGet(e) {
                 datesMap[dateKey] = 0;
             }
 
-            // Aggregate counts
             dataset.forEach(rec => {
                 const entryDate = rec.data.col_1 || rec.timestamp.split(' ')[0];
                 if (datesMap[entryDate] !== undefined) {
@@ -804,7 +792,6 @@ function doGet(e) {
             const labels = Object.keys(datesMap);
             const dataCounts = Object.values(datesMap);
 
-            // Render Chart.js
             const ctx = document.getElementById('entriesChart').getContext('2d');
             
             if (chartInstance) {
@@ -826,22 +813,14 @@ function doGet(e) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
+                    plugins: { legend: { display: false } },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { precision: 0 }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                        x: { grid: { display: false } }
                     }
                 }
             });
         }
-
 
         // --- SCHEMA MANAGER LOGIC ---
         function toggleSelectOptionsInput() {
@@ -868,14 +847,12 @@ function doGet(e) {
             }
 
             if (editId) {
-                // Edit existing
                 const index = schemaColumns.findIndex(c => c.id === editId);
                 if (index !== -1) {
                     schemaColumns[index] = { id: editId, name: colName, type: colType, required: colRequired, options: optionsArr };
                     showToast('Column schema updated!', 'success');
                 }
             } else {
-                // Add new
                 const newCol = {
                     id: 'col_' + Date.now(),
                     name: colName,
@@ -960,7 +937,6 @@ function doGet(e) {
             lucide.createIcons();
         }
 
-
         // --- DYNAMIC FORM GENERATOR ---
         function renderDynamicForm() {
             const container = document.getElementById('dynamicFormFields');
@@ -1031,7 +1007,6 @@ function doGet(e) {
 
             dataset.unshift(newRecord);
             
-            // Sync with physical sheet if configured
             if (scriptWebhookUrl) {
                 syncSingleRecordToGoogleSheet(newRecord);
             }
@@ -1040,13 +1015,11 @@ function doGet(e) {
             e.target.reset();
         }
 
-
         // --- RECORDS DATASET TABLE ---
         function renderRecordsTable() {
             const headerContainer = document.getElementById('recordsTableHeader');
             const bodyContainer = document.getElementById('recordsTableBody');
 
-            // Header
             let headerHtml = '<tr><th class="p-3 pl-5">Timestamp</th><th class="p-3">User</th>';
             schemaColumns.forEach(col => {
                 headerHtml += `<th class="p-3">${col.name}</th>`;
@@ -1054,7 +1027,6 @@ function doGet(e) {
             headerHtml += '</tr>';
             headerContainer.innerHTML = headerHtml;
 
-            // Body
             bodyContainer.innerHTML = '';
             dataset.forEach(rec => {
                 const tr = document.createElement('tr');
@@ -1103,11 +1075,9 @@ function doGet(e) {
         function exportToCSV() {
             let csvContent = "data:text/csv;charset=utf-8,";
             
-            // Header
             const headers = ['Timestamp', 'Submitted By', ...schemaColumns.map(c => `"${c.name}"`)];
             csvContent += headers.join(",") + "\r\n";
 
-            // Rows
             dataset.forEach(rec => {
                 const rowValues = [
                     `"${rec.timestamp}"`,
@@ -1128,7 +1098,6 @@ function doGet(e) {
             showToast('CSV Dataset exported successfully!', 'success');
         }
 
-
         // --- GOOGLE APPS SCRIPT SYNC INTEGRATION ---
         function openAppsScriptModal() {
             document.getElementById('appsScriptModal').classList.remove('hidden');
@@ -1141,6 +1110,8 @@ function doGet(e) {
         function saveAppsScriptUrl() {
             const url = document.getElementById('googleScriptUrlInput').value.trim();
             scriptWebhookUrl = url;
+
+            localStorage.setItem('mdm_script_url', url);
 
             const statusBadge = document.getElementById('syncStatusBadge');
             const syncText = document.getElementById('syncText');
@@ -1160,7 +1131,6 @@ function doGet(e) {
         function copyScriptCode() {
             const codeText = document.getElementById('scriptCodeText').innerText;
             
-            // Clipboard copy fallback
             const dummy = document.createElement("textarea");
             document.body.appendChild(dummy);
             dummy.value = codeText;
@@ -1200,7 +1170,6 @@ function doGet(e) {
             });
         }
 
-
         // --- TOAST SYSTEM ---
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
@@ -1224,12 +1193,10 @@ function doGet(e) {
             container.appendChild(toast);
             lucide.createIcons();
 
-            // Animate In
             setTimeout(() => {
                 toast.classList.remove('translate-y-2', 'opacity-0');
             }, 10);
 
-            // Animate Out
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
@@ -1237,45 +1204,45 @@ function doGet(e) {
         }
 
         // --- INITIALIZATION ---
-    window.onload = function() {
-    lucide.createIcons();
-    switchTab('dashboard');
+        window.onload = function() {
+            lucide.createIcons();
+            switchTab('dashboard');
 
-    const webhookUrl = localStorage.getItem('mdm_script_url');
-    if (webhookUrl) {
-        scriptWebhookUrl = webhookUrl;
-        
-        // Populate modal input field if present
-        const scriptInput = document.getElementById('googleScriptUrlInput');
-        if (scriptInput) scriptInput.value = webhookUrl;
-        
-        const badge = document.getElementById('syncStatusBadge');
-        if (badge) badge.classList.remove('hidden');
+            const webhookUrl = localStorage.getItem('mdm_script_url');
+            if (webhookUrl) {
+                scriptWebhookUrl = webhookUrl;
+                
+                const scriptInput = document.getElementById('googleScriptUrlInput');
+                if (scriptInput) scriptInput.value = webhookUrl;
+                
+                const badge = document.getElementById('syncStatusBadge');
+                if (badge) badge.classList.remove('hidden');
 
-        // Create a JSONP request to fetch user email across origins
-        const script = document.createElement('script');
-        window.handleGoogleUserResponse = function(data) {
-            if (data && data.email) {
-                currentUser = { 
-                    email: data.email, 
-                    role: 'user', 
-                    name: data.email.split('@')[0],
-                    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
+                const script = document.createElement('script');
+                
+                window.handleGoogleUserResponse = function(data) {
+                    if (data && data.email) {
+                        currentUser = { 
+                            email: data.email, 
+                            role: 'user', 
+                            name: data.email.split('@')[0],
+                            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
+                        };
+                        applyUserPermissions();
+                        document.getElementById('loginModal').classList.add('hidden');
+                    } else {
+                        loginAs('master');
+                    }
+                    document.body.removeChild(script);
                 };
-                applyUserPermissions();
+
+                script.src = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'action=getUserEmail&callback=handleGoogleUserResponse';
+                script.onerror = function() { loginAs('master'); };
+                document.body.appendChild(script);
             } else {
                 loginAs('master');
             }
-            document.body.removeChild(script);
         };
-
-        script.src = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'action=getUserEmail&callback=handleGoogleUserResponse';
-        script.onerror = function() { loginAs('master'); };
-        document.body.appendChild(script);
-    } else {
-        loginAs('master');
-    }
-};
     </script>
 </body>
 </html>
