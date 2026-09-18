@@ -1241,18 +1241,27 @@ function doGet(e) {
     lucide.createIcons();
     switchTab('dashboard');
 
+    // Load saved URL from storage into runtime memory
     const webhookUrl = localStorage.getItem('mdm_script_url');
     if (webhookUrl) {
+        scriptWebhookUrl = webhookUrl;
+        document.getElementById('googleScriptUrlInput').value = webhookUrl;
+        document.getElementById('syncStatusBadge').classList.remove('hidden');
+
+        // Fetch logged in Google email
         fetch(webhookUrl + '?action=getUserEmail')
             .then(res => res.json())
             .then(data => {
                 if (data.email && data.email !== '') {
-                    // Replaces the placeholder with your actual Google email
-                    currentUser = { email: data.email, role: 'user', name: data.email.split('@')[0] };
-                    const nameEl = document.getElementById('user-profile-name');
-                    if (nameEl) nameEl.innerText = currentUser.name;
+                    currentUser = { 
+                        email: data.email, 
+                        role: 'user', 
+                        name: data.email.split('@')[0],
+                        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
+                    };
+                    applyUserPermissions();
                 } else {
-                    loginAs('master'); // Fallback if browser blocks email reading
+                    loginAs('master');
                 }
             })
             .catch(() => loginAs('master'));
